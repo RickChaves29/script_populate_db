@@ -1,1 +1,1 @@
-# Script Para polular um banco de dados com filmes
+# Script para popular um banco de dados com filmes

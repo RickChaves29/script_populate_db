@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/csv"
 	"errors"
 	"io"
@@ -59,9 +60,9 @@ func remountCSV(file string) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		genderChannal := make(chan string)
-		go channalOfGenders(genders, genderChannal)
-		<-genderChannal
+		c := make(chan string)
+		go channalOfGenders(genders, c)
+		log.Println("genders: ", <-c)
 	}
 
 }
@@ -115,11 +116,25 @@ func getAllGenders(line string) ([]string, error) {
 	return genders, nil
 }
 
-func channalOfGenders(genders []string, g chan string) {
+func channalOfGenders(genders []string, c chan string) {
 	var gender string
 	for i := range genders {
-		//gender = genders[i]
-		log.Printf("gender: %v\n", genders[i])
+		gender += genders[i] + " "
+
 	}
-	g <- gender
+	c <- gender
+}
+
+func connDatabase(strConnection string) (*sql.DB, error) {
+	conn, err := sql.Open("postgres", strConnection)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("database connected")
+	err = conn.Ping()
+	if err != nil {
+		return nil, err
+	}
+	log.Println("connection is open")
+	return conn, nil
 }

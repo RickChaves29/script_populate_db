@@ -23,6 +23,7 @@ func init() {
 	CREATE TABLE IF NOT EXISTS movies (
 		id SERIAL PRIMARY KEY,
 	  title VARCHAR(150) NOT NULL,
+	  year INT NULL, 
 	  genres TEXT 
 	)
 	`)
@@ -66,7 +67,7 @@ func remountCSV(file string) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		db.Exec(`INSERT INTO movies (id, title, genres) VALUES ($1, $2, $3);`)
+		db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, idClean, title, year, genresClean)
 		log.Printf("id: %v", idClean)
 		log.Printf("title: %v", title)
 		log.Printf("year: %v", year)

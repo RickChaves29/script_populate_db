@@ -22,10 +22,10 @@ func init() {
 	}
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS movies (
-		id SERIAL PRIMARY KEY,
-	  title VARCHAR(150) NOT NULL,
-	  year INT NULL, 
-	  genres TEXT 
+		id BIGSERIAL PRIMARY KEY,
+	  	title TEXT NOT NULL,
+	  	year INT NULL, 
+	  	genres TEXT NULL
 	)
 	`)
 	if err != nil {
@@ -66,12 +66,13 @@ func remountCSV(file string) {
 		titleClean := removeWhiteSpace(row[1])
 		genresClean := removeWhiteSpace(row[2])
 
+		id := int64(idClean)
 		title := getTitle(titleClean)
 		year, err := getYear(titleClean)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Println(err.Error())
 		}
-		_, err = db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, idClean, title, year, genresClean)
+		_, err = db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, id, title, year, genresClean)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -108,6 +109,7 @@ func getTitle(line string) string {
 	return newString
 }
 func getYear(line string) (int, error) {
+	var stringToInt int
 	if line == "" {
 		return 0, errors.New("string line is empty")
 	}
@@ -115,11 +117,19 @@ func getYear(line string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	newString := rx.ReplaceAllString(line, "")
+	newString := rx.ReplaceAllString(line, " ")
 	if newString == "" {
 		return 0, nil
 	}
-	stringToInt, err := strconv.Atoi(newString)
+	stringClean := removeWhiteSpace(newString)
+	if len(newString) > 4 {
+		stringSplited := strings.Split(stringClean, " ")
+
+		lastString := stringSplited[len(stringSplited)-1]
+		stringToInt, err = strconv.Atoi(lastString)
+		return stringToInt, err
+	}
+	stringToInt, err = strconv.Atoi(newString)
 	if err != nil {
 		return 0, err
 	}

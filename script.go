@@ -6,12 +6,13 @@ import (
 	"encoding/csv"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+
+	_ "github.com/lib/pq"
 )
 
 func init() {
@@ -37,7 +38,10 @@ func main() {
 
 func remountCSV(file string) {
 	db, err := connDatabase(os.Getenv("CONNECT_DB"))
-	body, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	body, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -67,7 +71,10 @@ func remountCSV(file string) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, idClean, title, year, genresClean)
+		_, err = db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, idClean, title, year, genresClean)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 		log.Printf("id: %v", idClean)
 		log.Printf("title: %v", title)
 		log.Printf("year: %v", year)

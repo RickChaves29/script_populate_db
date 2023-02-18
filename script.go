@@ -14,13 +14,6 @@ import (
 	"strings"
 )
 
-type Movie struct {
-	ID     int32
-	Title  string
-	Year   int
-	genres string
-}
-
 func init() {
 	db, err := connDatabase(os.Getenv("CONNECT_DB"))
 	if err != nil {
@@ -42,6 +35,7 @@ func main() {
 }
 
 func remountCSV(file string) {
+	db, err := connDatabase(os.Getenv("CONNECT_DB"))
 	body, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -60,7 +54,10 @@ func remountCSV(file string) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		idClean := removeWhiteSpace(row[0])
+		idClean, err := strconv.Atoi(removeWhiteSpace(row[0]))
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 		titleClean := removeWhiteSpace(row[1])
 		genresClean := removeWhiteSpace(row[2])
 
@@ -69,7 +66,7 @@ func remountCSV(file string) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-
+		db.Exec(`INSERT INTO movies (id, title, genres) VALUES ($1, $2, $3);`)
 		log.Printf("id: %v", idClean)
 		log.Printf("title: %v", title)
 		log.Printf("year: %v", year)

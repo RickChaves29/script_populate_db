@@ -44,7 +44,7 @@ func remountCSV(file string) {
 		}
 		idClean := removeWhiteSpace(row[0])
 		titleClean := removeWhiteSpace(row[1])
-		genderClean := removeWhiteSpace(row[2])
+		genresClean := removeWhiteSpace(row[2])
 
 		title := getTitle(titleClean)
 		year, err := getYear(titleClean)
@@ -56,13 +56,13 @@ func remountCSV(file string) {
 		log.Printf("title: %v", title)
 		log.Printf("year: %v", year)
 
-		genders, err := getAllGenders(genderClean)
+		genres, err := getAllGenres(genresClean)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 		c := make(chan string)
-		go channalOfGenders(genders, c)
-		log.Println("genders: ", <-c)
+		go channalOfGenres(genres, c)
+		log.Println("genres: ", <-c)
 	}
 
 }
@@ -103,26 +103,26 @@ func getYear(line string) (int, error) {
 	return stringToInt, nil
 }
 
-func getAllGenders(line string) ([]string, error) {
+func getAllGenres(line string) ([]string, error) {
 	rx, err := regexp.Compile(`(?:[\(\)]|[\s][^a-zA-Z]+)`)
 	if err != nil {
 		return nil, err
 	}
 	stringRemove := rx.ReplaceAllString(line, "")
-	genders := strings.Split(stringRemove, "|")
+	genres := strings.Split(stringRemove, "|")
 	if err != nil {
 		return nil, err
 	}
-	return genders, nil
+	return genres, nil
 }
 
-func channalOfGenders(genders []string, c chan string) {
-	var gender string
-	for i := range genders {
-		gender += genders[i] + " "
+func channalOfGenres(genres []string, c chan string) {
+	var genre string
+	for i := range genres {
+		genre += genres[i] + " "
 
 	}
-	c <- gender
+	c <- genre
 }
 
 func connDatabase(strConnection string) (*sql.DB, error) {

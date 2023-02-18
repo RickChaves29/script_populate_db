@@ -8,17 +8,35 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 type Movie struct {
-	ID    int32
-	Title string
-	Year  int
+	ID     int32
+	Title  string
+	Year   int
+	genres string
 }
 
+func init() {
+	db, err := connDatabase(os.Getenv("CONNECT_DB"))
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS movies (
+		id SERIAL PRIMARY KEY,
+	  title VARCHAR(150) NOT NULL,
+	  genres TEXT 
+	)
+	`)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+}
 func main() {
 	remountCSV("movies.csv")
 }

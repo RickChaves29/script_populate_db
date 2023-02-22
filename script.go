@@ -2,24 +2,23 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/csv"
-	"errors"
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"strconv"
-	"strings"
 
+	"github.com/RickChaves29/script_populate_db/internal/data"
+	"github.com/RickChaves29/script_populate_db/utils"
 	_ "github.com/lib/pq"
 )
 
 func init() {
-	db, err := connDatabase(os.Getenv("CONNECT_DB"))
+	db, err := data.ConnDatabase(os.Getenv("CONNECT_DB"))
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+	defer db.Close()
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS movies (
 		id BIGSERIAL PRIMARY KEY,
@@ -37,19 +36,20 @@ func main() {
 }
 
 func remountCSV(file string) {
-	db, err := connDatabase(os.Getenv("CONNECT_DB"))
+	db, err := data.ConnDatabase(os.Getenv("CONNECT_DB"))
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalln("ERROR DB_CONN: ", err.Error())
 	}
+	defer db.Close()
 	body, err := os.ReadFile(file)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalln("ERROR READ_FILE: ", err.Error())
 	}
 	readNewFile := csv.NewReader(bytes.NewBuffer(body))
 	readNewFile.LazyQuotes = true
 	_, err = readNewFile.Read()
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println("ERROR READ_ROW: ", err.Error())
 	}
 	for {
 		row, err := readNewFile.Read()
@@ -57,96 +57,35 @@ func remountCSV(file string) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Println("ERROR READ_ROW: ", err.Error())
 		}
-		idClean, err := strconv.Atoi(removeWhiteSpace(row[0]))
+		idClean, err := strconv.Atoi(utils.RemoveWhiteSpace(row[0]))
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Println("ERROR CONVERT_ID: ", err.Error())
 		}
-		titleClean := removeWhiteSpace(row[1])
-		genresClean := removeWhiteSpace(row[2])
+		titleClean := utils.RemoveWhiteSpace(row[1])
+		genresClean := utils.RemoveWhiteSpace(row[2])
 
 		id := int64(idClean)
-		title := getTitle(titleClean)
-		year, err := getYear(titleClean)
+		title := utils.GetTitle(titleClean)
+		year, err := utils.GetYear(titleClean)
 		if err != nil {
-			log.Println(err.Error())
+			log.Println("ERROR GET_YEAR: ", err.Error())
 		}
-		_, err = db.Exec(`INSERT INTO movies (id, title, year, genres) VALUES ($1, $2, $3, $4);`, id, title, year, genresClean)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		log.Printf("id: %v", idClean)
-		log.Printf("title: %v", title)
-		log.Printf("year: %v", year)
+		log.Printf("ID: %v", idClean)
+		log.Printf("TITLE: %v", title)
+		log.Printf("YEAR: %v", year)
+		data.CreateMovie(id, title, year, genresClean, db)
+		genres, err := utils.GetAllGenres(genresClean)
 
-		genres, err := getAllGenres(genresClean)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Println("ERROR GET_ALL_GENRES: ", err.Error())
 		}
 		c := make(chan string)
 		go channalOfGenres(genres, c)
-		log.Println("genres: ", <-c)
+		log.Println("GENRES: ", <-c)
 	}
-
-}
-
-func removeWhiteSpace(line string) string {
-	rx, err := regexp.Compile(`^[\s]+|[\s]+$`)
-	if err != nil {
-		return ""
-	}
-	stringClean := rx.ReplaceAllString(line, "")
-	return stringClean
-}
-
-func getTitle(line string) string {
-	rx, err := regexp.Compile(`\s*?[\(]{1}[0-9]{4}[\)]{1}`)
-	if err != nil {
-		return ""
-	}
-	newString := rx.ReplaceAllString(line, "")
-	return newString
-}
-func getYear(line string) (int, error) {
-	var stringToInt int
-	if line == "" {
-		return 0, errors.New("string line is empty")
-	}
-	rx, err := regexp.Compile(`[^0-9]`)
-	if err != nil {
-		return 0, err
-	}
-	newString := rx.ReplaceAllString(line, " ")
-	if newString == "" {
-		return 0, nil
-	}
-	stringClean := removeWhiteSpace(newString)
-	if len(newString) > 4 {
-		stringSplited := strings.Split(stringClean, " ")
-
-		lastString := stringSplited[len(stringSplited)-1]
-		stringToInt, err = strconv.Atoi(lastString)
-		return stringToInt, err
-	}
-	stringToInt, err = strconv.Atoi(newString)
-	if err != nil {
-		return 0, err
-	}
-	return stringToInt, nil
-}
-
-func getAllGenres(line string) ([]string, error) {
-	rx, err := regexp.Compile(`(?:[\(\)]|[\s][^a-zA-Z]+)`)
-	if err != nil {
-		return nil, err
-	}
-	stringRemove := rx.ReplaceAllString(line, "")
-	genres := strings.Split(stringRemove, "|")
-	if err != nil {
-		return nil, err
-	}
-	return genres, nil
+	log.Println("END: add all movies is success")
 }
 
 func channalOfGenres(genres []string, c chan string) {
@@ -156,18 +95,4 @@ func channalOfGenres(genres []string, c chan string) {
 
 	}
 	c <- genre
-}
-
-func connDatabase(strConnection string) (*sql.DB, error) {
-	conn, err := sql.Open("postgres", strConnection)
-	if err != nil {
-		return nil, err
-	}
-	log.Println("database connected")
-	err = conn.Ping()
-	if err != nil {
-		return nil, err
-	}
-	log.Println("connection is open")
-	return conn, nil
 }
